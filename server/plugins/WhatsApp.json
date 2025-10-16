@@ -1,0 +1,38 @@
+{
+    "name": "WhatsApp",
+    "description": "Send messages to a WhatsApp Group",
+    "disable": false,
+    "trigger": "message",
+    "scope": "after",
+    "config": [ 
+        {
+            "name": "apiTokenInstance",
+            "label": "API Token",
+            "description": "Your WhatsApp API Token from Green-API",
+            "type": "text",
+            "required": true
+        },
+        {
+            "name": "idInstance",
+            "label": "Instance ID",
+            "description": "Your Green-API Instance ID",
+            "type": "text",
+            "required": true
+        }
+    ],
+    "aliasConfig": [ 
+        {
+            "name": "enable",
+            "label": "Enable WhatsApp",
+            "description": "Enable this plugin to send messages to WhatsApp Group",
+            "type": "checkbox"
+        },
+        {
+            "name": "groupId",
+            "label": "Group ID",
+            "description": "WhatsApp Group ID to send messages to (e.g. 1203xxxxxx@g.us)",
+            "type": "text",
+            "required": true
+        }
+    ]
+}

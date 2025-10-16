@@ -1,90 +1,48 @@
-#
-#	Build & install packages
-# multistage to save time when building (don't install packages every time)
-#
-FROM slocomptech/bi-node:12 as builder
+# --- Stage 1: Build ---
+FROM node:20-alpine AS builder
 
-COPY package.json /app/
+WORKDIR /app
 
-RUN apk add --no-cache --virtual .build-dependencies \
-      autoconf \
-      automake \
-      build-base \
-      cmake \
-      gcc \
-      g++ \
-      make \
-      musl-dev \
-      python3 && \
-    ln -s /usr/bin/python3 /usr/bin/python && \
-    cd /app && \
-    sudo -u ${CONTAINER_USER} -g ${CONTAINER_USER} npm install ${NPM_ARGS}
+# Install build tools
+RUN apk add --no-cache python3 make g++ bash
 
-#
-#	PagerMon image
-#
-FROM slocomptech/bi-node:12
+# Copy package files
+COPY package.json ./
 
-#
-#	Copy packages from builder
-#
-COPY --from=builder /app/node_modules /app/node_modules
+# Install dependencies
+RUN npm install
 
-#
-#	Arguments
-#
-ARG BUILD_DATE
-ARG NODE_ENV
-ARG NPM_ARGS
-ARG TAG
-ARG VCS_REF
-ARG VCS_SRC
-ARG VERSION
+# Copy app source
+COPY . .
 
-#
-#	Labels
-#	@see https://github.com/opencontainers/image-spec/blob/master/annotations.md
-#	@see https://semver.org/
-#
-LABEL org.opencontainers.image.authors="PagerMon Team" \
-      org.opencontainers.image.created=${BUILD_DATE} \
-      org.opencontainers.image.description="PagerMon server" \
-      org.opencontainers.image.documentation="https://github.com/pagermon/pagermon" \
-      org.opencontainers.image.revision=${VCS_REF} \
-      org.opencontainers.image.source=${VCS_SRC} \
-      org.opencontainers.image.title="PagerMon server" \
-      org.opencontainers.image.url="https://github.com/pagermon/pagermon"\
-      org.opencontainers.image.vendor="PagerMon Team" \
-      org.opencontainers.image.version=${VERSION}
+# --- Stage 2: Production ---
+FROM node:20-alpine
 
-#
-#	Environment variables
-#	Don't forget to set NODE_ENV
-#
-ENV APP_NAME=PagerMon \
-    APP_VERSION=${VERSION} \
-    NODE_ENV=${NODE_ENV:-production}
+# Non-root user
+RUN addgroup -S pagermon && adduser -S -G pagermon pagermon
 
-#
-#	Install app in container
-#
+WORKDIR /app
+
+# Copy built app
+COPY --from=builder /app /app
+
+# Expose port
 EXPOSE 3000
 
+# Install sqlite
 RUN apk add --no-cache sqlite
 
-#
-# s6 overlay scripts
-#	@see https://github.com/just-containers/s6-overlay
-#
-COPY root /
+# Ensure proper permissions
+RUN chown -R pagermon:pagermon /app
 
-COPY . /app/
+RUN ln -sf /config/config.json /app/config/config.json
 
-# Install pagermon
-RUN chown -R $CONTAINER_USER:$CONTAINER_USER /app && \
-    chown -R $CONTAINER_USER:$CONTAINER_USER /defaults && \
-    # Link config file to config dir
-    sudo -u ${CONTAINER_USER} -g ${CONTAINER_USER} ln -s /config/config.json /app/config/config.json && \
-    sudo -u ${CONTAINER_USER} -g ${CONTAINER_USER} ln -s /config/backup.json /app/config/backup.json && \
-    sudo -u ${CONTAINER_USER} -g ${CONTAINER_USER} cp /app/config/default.json /defaults/config.json && \
-    sed -i 's/"\.\/messages\.db.*"/"\/config\/messages\.db"/' /defaults/config.json
+USER pagermon
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
+  CMD wget --spider http://localhost:3000 || exit 1
+
+CMD ["node", "app.js"]
+
+

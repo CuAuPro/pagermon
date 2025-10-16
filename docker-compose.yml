@@ -1,16 +1,48 @@
-version: '3.3'
+name: pagermon
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 services:
-    pagermon:
-        build: ./server
-        image: pagermon
-        container_name: pagermon
-        ports:
-            - 3000:3000
-        volumes:
-            - ./data:/config
-        environment:
-            - TZ=Europe/London
-            - NODE_ENV=production
-            - HOSTNAME=localhost
-            - USE_COOKIE_HOST=false
-            - APP_NAME=pagermon
+  pagermon:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "3000"
+    networks:
+      - pagermon
+    volumes:
+      - ./data/server:/config
+    environment:
+      NODE_ENV: production
+      TZ: Europe/Ljubljana
+      APP_NAME: PagerMon
+      HOSTNAME: localhost
+      USE_COOKIE_HOST: "false"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+    logging: *default-logging
+
+networks:
+  pagermon:
+    driver: bridge
