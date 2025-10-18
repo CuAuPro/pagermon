@@ -18,6 +18,7 @@ services:
       - pagermon
     volumes:
       - ./data/server:/config
+      - ./data/server/messages.db:/app/messages.db
     environment:
       NODE_ENV: production
       TZ: Europe/Ljubljana
