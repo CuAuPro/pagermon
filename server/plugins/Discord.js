@@ -8,6 +8,19 @@ function run(trigger, scope, data, config, callback) {
     if (dConf && dConf.enable) {
         // var hostname = nconf.get('hostname');
         var hostname = process.env.HOSTNAME || '';
+        var useHttps = dConf.useHttps !== false; // default true
+        try {
+            if (hostname) {
+                // prepend scheme if missing
+                if (!/^https?:\/\//.test(hostname)) {
+                    hostname = (useHttps ? 'https://' : 'http://') + hostname;
+                }
+
+                new URL(hostname); // validate
+            }
+        } catch (e) {
+            logger.main.warn('Discord: HOSTNAME is invalid, falling back to default GitHub URL');
+        }
         //Ensure webhook ID and Token have been entered into the alias. 
         if (dConf.webhook == 0 || !dConf.webhook) {
             logger.main.error('Discord: ' + data.address + ' No Webhook URL set. Please enter Webhook URL.');

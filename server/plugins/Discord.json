@@ -5,6 +5,13 @@
     "trigger": "message",
     "scope": "after",
     "config": [ 
+        {
+            "name": "useHttps",
+            "label": "Use HTTPS",
+            "description": "Force the hostname to use https:// in Discord embeds",
+            "type": "checkbox",
+            "default": true
+        }
     ],
     "aliasConfig": [ 
         {
